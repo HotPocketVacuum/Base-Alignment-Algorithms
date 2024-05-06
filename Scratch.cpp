@@ -133,3 +133,42 @@ class Path{
     public:
 
 };
+
+// Determine the # of blocks from the max threads per block and needed threads
+// long long neededThreads = ceil(static_cast<double>(maxThreadCalc(seq1l, seq2l, THREAD_MAX_PER_MS)));
+// int numBlocks = static_cast<int>(ceil(static_cast<double>(neededThreads / BLOCK_SIZE)));
+// long long neededThreads = ceil(static_cast<double>(seq1l * seq2l));
+// int numBlocks = static_cast<int>(ceil(static_cast<double>(neededThreads / BLOCK_SIZE)));
+
+long long calcIncDiagSum(int n, int m){
+
+    int fullSegments =  n / m;
+    int remainder = n % m;
+
+    long long sum = (fullSegments * ceil(1 / m));
+
+    for (int n = fullSegments * m + 1; n <= y; ++n){
+        sum += ceil(static_cast<double>(n) / m)
+    }
+
+    return sum;
+}
+
+long long maxThreadCalc(int s1l, int s2l, int maxThreads){
+
+    if (s1l >= s2l){
+        x = s1l;
+        y = s2l;
+    } else {
+        y = s1l;
+        x = s2l;
+    }
+
+    // Calculate # of threads for consecutive incrementing-length diagonals on either side of the matrix
+    incDiagThreads = 2 * calcIncDiagSum(x - y - 1, maxThreads);
+
+    // Calculate # of threads for the middle constant-length diagonals
+    staticDiagThreads = (x - y + 1) * y;
+
+    return staticDiagThreads;
+}
