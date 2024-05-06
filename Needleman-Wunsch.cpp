@@ -3,7 +3,19 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <cuda.h>
+#include <cuda_runtime.h>
 using namespace std;
+
+// GPU Kernel function to fill distance matrix
+__global__ void calcDiag(int* distm, int rows, int cols, in diags){
+    // Assign each diagonal to a block for processing
+    int diagInd = blockIdx.x;
+    int tid = threadIdx.x;
+};
 
 int main(int argc, char*argv[]) {
     
@@ -78,7 +90,12 @@ int main(int argc, char*argv[]) {
     cout << "rows: " << seq1l << "\n";
     cout << "columns: " << seq2l << "\n";
 
-    // Fill the matrix
+    // Initialize block of memory on GPU
+
+    // Copy array to GPU
+
+    // Define GPU 
+
 
     for (int i = 0; i < seq1l; i++){
         delete[] distm[i];
