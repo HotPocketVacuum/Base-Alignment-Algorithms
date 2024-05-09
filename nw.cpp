@@ -1,11 +1,10 @@
-// Read in sequences
-
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <cstring>
 #include <cuda.h>
 #include <cuda_runtime.h>
 using namespace std;
@@ -14,13 +13,11 @@ using namespace std;
 const long int GRID_SIZE = 1024; // Number of blocks on the grid (X dimension)
 const int BLOCK_SIZE = 1024; // Number of threads on each block
 
-
 // Get sequence from File
 string getSeq(string fName){
     ifstream infile(fName);
     if (!infile){
-        cerr << "Could not open file: " << fname << "\n";
-        return 1;
+        cerr << "Could not open file: " << fName << "\n";
     }
     string seq;
     infile >> seq;
@@ -29,9 +26,9 @@ string getSeq(string fName){
 }
 
 // Convert characters to numerical form
-string convSeq(string *seq){
+string convSeq(string seq){
     string result;
-    for (char base : *seq) {
+    for (char base : seq) {
         switch (base) {
             case 'A':
                 result += '1';
@@ -61,75 +58,108 @@ string convSeq(string *seq){
 }
 
 // Find next start xy for diagonal filling
-vector<int> getNextXY(vector<int> *prev, int *r, int *c, long long int *t){
-    // Get b of y=-x+b that runs through previous start xy
-    b = prev[1] + prev[0];
+std::vector<int> getNextXY(std::vector<int> prev, int r, int c, int t){
+    // r and c start from 1, they denote the literal number of rows and columns
 
-    // Find where y=-x+b intercepts the bounds
-    int y1 = -c + b;
-    int x1 = b - y1;
-    int y2 = 0;
-    int x2 = b;
-    if ((x2 > x1) && (y2 < y1)){
-        minX = x1;
-        maxY = y1;
-    } else if ((y2 = y1) && (x2 = x1)){
-        minX = x1;
-        maxY = y1;
+    // Find raw expected start xy
+    int px = prev[0];
+    int py = prev[1];
+    int rawExpX = px - t;
+    int rawExpY = py + t;
+
+    // If raw expected xy is out of bounds of the array
+    if ((rawExpX < 0) || (rawExpY > r - 1)){
+
+        // If past the corner of the array, set as -1, -1 and return
+        if ((px == c - 1) && (py == r - 1)){
+            std::vector<int> result = {-1, -1};
+
+            return result;
+        }
+
+        // Snap the raw expected xy to the start of the next diagonal
+        rawExpX = px + py + 1;
+        rawExpY = 0;
+        if (rawExpX > c - 1){
+            rawExpY = rawExpX - (c - 1);
+            rawExpX = c - 1;
+        }
+
+        // Get the amount of diagonal overshoot used in the previous kernel run
+        int prevAllowedOS = prev[1] - rawExpY;
+        if (prevAllowedOS < 0){
+            prevAllowedOS = 0;
+        }
+        int rawYint = px + py - 1;
+        if (rawYint > r - 1){
+            rawYint = r - 1;
+        }
+        int expectedOS = t - (1 + rawYint - py);
+        int actualOS = std::min(expectedOS, prevAllowedOS);
+
+        // Add any overshoot to the raw expected xy
+        int NextX = rawExpX - actualOS;
+        int NextY = rawExpY + actualOS;
+
+        std::vector<int> result = {NextX, NextY};
+
+        return result;
+
     } else {
-        minX = x2;
-        maxY = y2;
+        
+        std::vector<int> result = {rawExpX, rawExpY};
+
+        return result;
+
     }
 
-    // Get number of out of bound threads
-    vector<int> exp = {prev[0] + t, prev[1] + t};
 }
-
 
 
 // Assume dismt is a reference to a 2d array in linear form
-__global__ void fillCell(float *distm, int rows, int cols, int start, int *seq){
+__global__ void fillCell(float *distm, int rows, int cols, int start, int next, int *seq){
+
+    // Get thread ID (Start from 0, 1, 2, ... # threads - 1)
     int cellNum = blockIdx.x * blockDim.x + threadIdx.x;
 
 
-    //
+
+
+    // If overshot and has >= to previous start's y, kill
+    // If out of bounds, kill
 
 }
 
-
-
-int main(int argc, char*argv[]) {
+int main2(int argc, char*argv[]) {
     
     // Handle incorrect number of arguments
     if (argc != 6){
-        cerr << "Needs these arguments: <filename 1> <filename 2> <match score> <mismatch score> <gap score>" << "\n";
-        return 1;
+        cout << "Needs these arguments: <filename 1> <filename 2> <match score> <mismatch score> <gap score>" << "\n";
+        return 0;
     }
 
     cout << "Opening Files" << "\n";
 
     // Open files and read contents to string
-    string* seq1a = new string;
-    string* seq2a = new string;
-    *seq1a = getSeq(argv[1]);
-    *seq2a = getSeq(argv[2]);
+    string seq1a;
+    string seq2a;
+    seq1a = getSeq(argv[1]);
+    seq2a = getSeq(argv[2]);
 
     // cout << "Reading strings: " << seq1 << ", " << seq2 << "\n";
 
     // Get lengths of strings
     int seq1l;
     int seq2l;
-    seq1l = seq1a.length();
-    seq2l = seq2a.length();
+    seq1l = seq1a.size();
+    seq2l = seq2a.size();
 
     // Convert strings to numerical form
     // A = 1, T = 2, C = 3, G = 4, gap = 0
-    string* seq1 = new string;
-    string* seq2 = new string;   
-    *seq1 = convSeq(seq1a);
-    *seq2 = convSeq(seq2a);
-    delete seq1a;
-    delete seq2a;
+    string seq1;
+    string seq2;   
+    seq1 = convSeq(seq1a);
+    seq2 = convSeq(seq2a);
 
     // cout << "Getting lengths: " << seq1l << ", " << seq2l << "\n";
 
@@ -167,6 +197,14 @@ int main(int argc, char*argv[]) {
     cout << "rows: " << seq1l << "\n";
     cout << "columns: " << seq2l << "\n";
 
+    // start next xy at 0,0
+
+    // for loop until
+    // set current xy = next xy
+    // calculate next xy
+    // run kernel
+
+
 
 
 
@@ -174,8 +212,6 @@ int main(int argc, char*argv[]) {
         delete[] distm[i];
     }
     delete[] distm;
-    delete seq1;
-    delete seq2;
 
     return 0;
 

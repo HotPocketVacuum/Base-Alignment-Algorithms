@@ -1,3 +1,101 @@
+Class classname(x, y){
+
+    publicly accessible variable xpos = x;
+    publicly accessible variable ypos = y;
+    publicly accessible variable final_value = null
+    publicly accessible variable var1 = null
+    publicly accessible variable var2 = null
+    publicly accessible variable var3 = null
+
+    publicly accessible function progress{
+        if var1 and var2 and var3 are not null{
+
+            set this class' final_value + this class' var1 + this class' var2 + this class' var3
+
+            if another class instances does not exist with their xpos and ypos = (this class' xpos + 1 and this class' ypos + 1){
+                create another instance of this class with its xpos and ypos = this class' xpos + 1 and this class' ypos + 1
+            }
+            if another class instances does not exist with their xpos and ypos= (this class' xpos + 1 and this class' ypos){
+                create another instance of this class with its xpos and ypos = this class' xpos + 1 and this class' ypos)
+            }
+            if another class instances does not exist with their xpos and ypos = (this class' xpos and this class' ypos + 1){
+                create another instance of this class with its xpos and ypos = this class' xpos and this class' ypos + 1
+            }
+
+            find the class instance with its xpos and ypos = this class's xpos + 1 and this class' ypos + 1
+            set the var1 of that class from this class' final_value
+            call that class' progress function
+            
+            now find the class instance with its xpos and ypos = this class's xpos + 1 and this class' ypos
+            set the var2 of that class from this class' final_value
+            call that class' progress function
+
+            now find the class instance with its xpos and ypos = this class's xpos and this class' ypos + 1
+            set the var3 of that class from this class' final_value
+            call that class' progress function
+
+            write the final_value of this class to the globally accessible 2d array called "darray" to the positions (xpos, ypos)
+        }
+    }
+}
+
+
+
+Class cell{
+public:
+    ClassName(int r, int c) : 
+
+
+
+private:
+
+
+
+
+}
+
+
+
+    // Get b of y=-x+b that runs through previous start xy
+    b = prev[1] + prev[0];
+
+    // Find where y=-x+b intercepts the bounds at the top right
+    int y1 = -c + b;
+    int x1 = b - y1;
+    int y2 = 0;
+    int x2 = b;
+    if ((x2 > x1) && (y2 < y1)){
+        int minX = x1;
+        int maxY = y1;
+    } else if ((y2 = y1) && (x2 = x1)){
+        int minX = x1;
+        int maxY = y1;
+    } else {
+        int minX = x2;
+        int maxY = y2;
+    }
+
+    // Get number of out of bound threads
+    int rem = prev[0] + t - minX;
+
+    // At the next diagonal, find where it interects with bounds at the bottom left
+    if (b >= r){
+        int nextDiagX = b + 1 - r;
+        int nextDiagY = r;
+    } else {
+        int nextDiagX = 0;
+        int nextDiagY = b + 1;
+    }
+
+    // Add remaining threads to next diagonal intersect
+    nextDiagXAdded = nextDiagX + rem;
+    nextDiagYAdded = nextDiagY - rem;
+
+    // If the length of diagonal b + 1 > remaining threads
+    
+    
+
+
 class distm{
     private:
         size_t rowNum;

@@ -1,0 +1,131 @@
+# Use an appropriate base image with a C++ compiler and necessary tools
+FROM gcc:latest
+
+# Install CMake
+RUN apt-get update && \
+    apt-get install -y cmake git
+
+# Install Catch2
+RUN git clone https://github.com/catchorg/Catch2.git && \
+    cd Catch2 && \
+    cmake -Bbuild -H. -DBUILD_TESTING=OFF && \
+    cmake --build build/ --target install && \
+    cd .. && \
+    rm -rf Catch2
+
+# Set up environment variables
+ENV CATCH_INCLUDE_DIR /usr/local/include
+
+WORKDIR /app
+
+RUN mkdir src
+RUN mkdir test
+RUN mkdir include
+
+# Copy files into a cmake project-like structure
+COPY nw.cpp /app/src/nw.cpp
+COPY tests.cpp /app/test/tests.cpp
+
+# Generate CMakeLists.txt using echo and shell redirection
+RUN echo "cmake_minimum_required(VERSION 3.10)" > /app/CMakeLists.txt
+RUN echo "project(MyProject)" >> /app/CMakeLists.txt
+#RUN echo "find_package(Catch2 REQUIRED)" >> /app/CMakeLists.txt
+RUN echo "set(CMAKE_CXX_STANDARD 11)" >> /app/CMakeLists.txt
+RUN echo "add_executable(nw src/nw.cpp)" >> /app/CMakeLists.txt
+#RUN echo "add_executable(tests test/tests.cpp)" >> /app/CMakeLists.txt
+#RUN echo "target_link_libraries(tests Catch2::Catch2WithMain)" >> /app/CMakeLists.txt
+RUN echo "target_include_directories(nw PUBLIC src)" >> /app/CMakeLists.txt
+RUN echo "add_subdirectory(test)" >> /app/CMakeLists.txt
+#RUN echo "target_include_directories(tests PRIVATE src)" >> /app/CMakeLists.txt
+#RUN echo "include(CTest)" >> /app/CMakeLists.txt
+#RUN echo "include(Catch)" >> /app/CMakeLists.txt
+#RUN echo "catch_discover_tests(tests)" >> /app/CMakeLists.txt
+
+RUN echo "find_package(Catch2 REQUIRED)" >> /app/test/CMakeLists.txt
+RUN echo "add_executable(tests tests.cpp \${CMAKE_SOURCE_DIR}/src/nw.cpp)" >> /app/test/CMakeLists.txt
+RUN echo "target_link_libraries(tests Catch2::Catch2WithMain)" >> /app/test/CMakeLists.txt
+RUN echo "target_include_directories(tests PRIVATE \${CMAKE_SOURCE_DIR}/src)" >> /app/test/CMakeLists.txt
+RUN echo "target_include_directories(tests PRIVATE \${CMAKE_SOURCE_DIR}/include)" >> /app/test/CMakeLists.txt
+RUN echo "include(CTest)" >> /app/test/CMakeLists.txt
+RUN echo "include(Catch)" >> /app/test/CMakeLists.txt
+RUN echo "catch_discover_tests(tests)" >> /app/test/CMakeLists.txt
+
+# Generate program header
+RUN echo "#ifndef NW_H" >> /app/include/nw.h
+RUN echo "#define NW_H" >> /app/include/nw.h
+RUN echo "#include <vector>" >> /app/include/nw.h
+RUN echo "std::vector<int> getNextXY(const std::vector<int>& prev, int r, int c, int t);" >> /app/include/nw.h
+RUN echo "#endif" >> /app/include/nw.h
+
+# Build CMake Project
+RUN mkdir /app/build
+WORKDIR /app/build
+RUN cmake ..
+RUN cmake --build .
+
+# Run Command
+CMD ["./tests"]
+
+
+
+# Ensure catch2 install
+#RUN find /usr/local/ -name 'Catch2' > /tmp/catch2_install_dir.txt
+#CMD cat /tmp/catch2_install_dir.txt
+
+
+#RUN echo "add_subdirectory(src)" >> /app/CMakeLists.txt
+#RUN echo "add_subdirectory(test)" >> /app/CMakeLists.txt
+
+#RUN echo "set(SOURCES src/nw.cpp)" >> /app/src/CMakeLists.txt
+#RUN echo "add_executable(nw \${SOURCES})" >> /app/src/CMakeLists.txt
+#RUN echo "target_include_directories(nw PUBLIC \${CMAKE_CURRENT_SOURCE_DIR}/src)" >> /app/src/CMakeLists.txt
+
+#RUN echo "set(TEST_SOURCES tests.cpp)" >> /app/test/CMakeLists.txt
+#RUN echo "add_executable(unit_tests test/tests.cpp)" >> /app/test/CMakeLists.txt
+#RUN echo "target_link_libraries(unit_tests PUBLIC Catch2::Catch2WithMain)" >> /app/test/CMakeLists.txt
+#RUN echo "include(CTest)" >> /app/test/CMakeLists.txt
+#RUN echo "enable_testing()" >> /app/test/CMakeLists.txt
+#RUN echo "find_package(Catch2 REQUIRED)" >> /app/test/CMakeLists.txt
+#RUN echo "include(Catch)" >> /app/test/CMakeLists.txt
+#RUN echo "catch_discover_tests(unit_tests)" >> /app/test/CMakeLists.txt
+
+
+# Ensure Proper file copy
+#RUN find /app/ -name 'nw.cpp' > /tmp/nw_install_dir.txt
+#CMD cat /tmp/nw_install_dir.txt
+
+#RUN cat /app/src/CMakeLists.txt > /tmp/src_install_dir.txt
+#RUN cat /app/test/CMakeLists.txt > /tmp/test_install_dir.txt
+#RUN cat /app/CMakeLists.txt > /tmp/install_dir.txt
+#CMD cat /tmp/nw_install_dir.txt
+
+# Build the nw project via cmake
+
+
+
+
+
+# Set environment variable for Catch2 installation directory
+#ENV CATCH2_INSTALL_DIR=/usr/local
+
+# Set the working directory inside the container
+#WORKDIR /app
+
+# Copy your source and test files into the container
+#COPY tests.cpp nw.cpp nw.hpp /app/
+#RUN curl -L -o /app//tests/catch_amalgamated.hpp https://github.com/catchorg/Catch2/blob/devel/extras/catch_amalgamated.hpp
+
+# Compile prog.cpp into prog.o (object file)
+#RUN g++ -c -o nw.o nw.cpp -I${CATCH2_INSTALL_DIR}/include
+
+# Compile tests.cpp into tests.o (object file)
+#RUN g++ -c -o tests.o tests.cpp -I${CATCH2_INSTALL_DIR}/include
+
+# Find catch2
+#RUN CATCH2_LIB_PATH=$(dpkg-query -L catch2 | grep '/libcatch2\.a$' | xargs dirname)
+
+# Link prog.o and tests.o into tests executable
+#RUN g++ -o tests tests.o nw.o -L${CATCH2_INSTALL_DIR}/lib -lcatch2
+
+# Run the tests using Catch2
+#CMD ["./tests"]
