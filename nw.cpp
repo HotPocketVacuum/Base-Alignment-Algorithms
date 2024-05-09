@@ -26,30 +26,27 @@ string getSeq(string fName){
 }
 
 // Convert characters to numerical form
-string convSeq(string seq){
-    string result;
-    for (char base : seq) {
+vector<int> convSeq(string seq){
+    vector<int> result;
+    for (char ch : seq) {
         switch (base) {
             case 'A':
-                result += '1';
+                result.push_back(base - '0');
                 break;
             case 'T':
-                result += '2';
+                result.push_back(base - '1');
                 break;
             case 'C':
-                result += '3';
+                result.push_back(base - '2');
                 break;
             case 'G':
-                result += '4';
+                result.push_back(base - '3');
                 break;
             case '-':
-                result += '0';
-                break;
-            case ' ':
-                result += '0';
+                result.push_back(base - '4');
                 break;
             default:
-            // To handle unrecognized characters
+                result.push_back(base - '0');
                 break;
         }
     }
@@ -98,35 +95,146 @@ std::vector<int> getNextXY(std::vector<int> prev, int r, int c, int t){
         int actualOS = std::min(expectedOS, prevAllowedOS);
 
         // Add any overshoot to the raw expected xy
-        int NextX = rawExpX - actualOS;
-        int NextY = rawExpY + actualOS;
+        int nextX = rawExpX - actualOS;
+        int nextY = rawExpY + actualOS;
 
-        std::vector<int> result = {NextX, NextY};
-
+        std::vector<int> result = {nextX, nextY};
         return result;
 
     } else {
-        
         std::vector<int> result = {rawExpX, rawExpY};
-
         return result;
-
     }
+}
 
+// Calculate the score of a cell on the distance matrix
+__device__ calcDistMat(float* sparse_distm, int x, int y, vector<int>* seq1, vector<int>* seq2, int gap, int match, int mismatch){
+    if ((seq1[y - 1] == 0) || (seq2[x - 1] == 0)) {
+        score = maxPrevValue + gap;
+    } else if (seq1[y - 1] == seq2[x - 1]){
+        score = maxPrevValue + match;
+    } else {
+        score = maxPrevValue + mismatch;
+    }
+    sparse_distm[(y) * c + (x)] = score;
+    return;
 }
 
 
-// Assume dismt is a reference to a 2d array in linear form
-__global__ void fillCell(float *distm, int rows, int cols, int start, int next, int *seq){
+// !!!UNUSED DEVICE FUNTION!!!
+// Determine and record the traceback directions for a cell in the distance matrix
+__device__ calcDirectionMatrix(float* sparse_distm, float* direction_mat, int x, int y, int m){
+    // Get the values of the previous 3 cells
+    int t = sparse_distm[(cellY - 1) * c + (cellX)];
+    int d = sparse_distm[(cellY - ) * c + (cellX - 1)];
+    int l = sparse_distm[(cellY) * c + (cellX - 1)];
+
+    // Records the traceback directions in direction matrix
+
+    // Handle no ties
+    if ((m == t) && (m != d) && (m != l)){
+        direction_mat[(cellY) * c + (cellX)] = 001;
+    } else if ((m == d) && (m != t) && (m != l)){
+        direction_mat[(cellY) * c + (cellX)] = 010;
+    } else if ((m == l) && (m != d) && (m != t)){
+        direction_mat[(cellY) * c + (cellX)] = 100;
+
+    // Handle partial ties (Tie between 2)
+    } else if ((m == t) && (m == d) && (m != l)){
+        direction_mat[(cellY) * c + (cellX)] = 011;
+    } else if ((m == d) && (m == l) && (m != t)){
+         direction_mat[(cellY) * c + (cellX)] = 110;       
+    } else if ((m == l) && (m == t) && (m != d)){
+         direction_mat[(cellY) * c + (cellX)] = 101;  
+
+    // Handle full tie (Tie with 3)
+    } else {
+        direction_mat[(cellY) * c + (cellX)] = 111;
+    }
+    return;
+}
+
+
+// CUDA kernel, each instance of the kernel (1 kernel = 1 GPU thread)
+// fills out a cell on the distance and direction matrices
+__global__ void fillCell(float* sparse_distm, //float* direction_mat, 
+int r, int c, vector<int> curr, vector<int>* seq1, vector<int>* seq2, int match, int mismatch, int gap){
 
     // Get thread ID (Start from 0, 1, 2, ... # threads - 1)
     int cellNum = blockIdx.x * blockDim.x + threadIdx.x;
 
+    // Calculate raw expected cell index
+    int expCellX = curr[0] - cellNum;
+    int expCellY = curr[1] + cellNum;
+    
+    // If the expected cell is out of bounds
+    if ((expCellX < 0) || (expCellY > r - 1)){
 
+        // If past the bottom right corner of the array, kill
+        if ((cellNum != 0) && (curr[1] >= (r + c - 2) - curr[0])){
+            // KILLCODE
+            return;
+        }
 
+        // Snap the raw expected xy to the start of the next diagonal
+        expCellX = prev[0] + prev[1] + 1;
+        expCellY = 0;
+        if (expCellX > c - 1){
+            expCellY = expCellX - (c - 1);
+            expCellX = c - 1;
+        }
 
-    // If overshot and has >= to previous start's y, kill
-    // If out of bounds, kill
+        // Get the amount of diagonal overshoot used in the previous kernel run
+        int rawYint = px + py - 1;
+        if (rawYint > r - 1){
+            rawYint = r - 1;
+        }
+        int expectedOS = t - (1 + rawYint - py);
+
+        // Add any overshoot to the raw expected xy
+        int cellX = rawExpX - expectedOS;
+        int cellY = rawExpY + expectedOS;
+
+        // If the overshoot goes past the allowed overshoot, kill
+        if (cellY >= curr[1]){
+            //  KILLCODE
+            return;
+        }
+
+    } else {
+        
+        int cellX = rawExpX - expectedOS;
+        int cellY = rawExpY + expectedOS;
+    }
+
+    // Handle first row and first column
+    if ((cellX == 0) && (cellY == 0)){
+        sparse_distm[(cellY) * c + (cellX)] = 0;
+        direction_mat[(cellY) * c + (cellX)] = 0;
+        return;
+    } else if (cellX == 0){
+        sparse_distm[(cellY) * c + (cellX)] = gap;
+        direction_mat[(cellY) * c + (cellX)] = 0;
+        return;
+    } else if (cellY == 0){
+        sparse_distm[(cellY) * c + (cellX)] = gap;
+        direction_mat[(cellY) * c + (cellX)] = 0;
+        return;
+    }
+
+    // Calculate max previous value
+    int maxPrevValue = max(sparse_distm[(cellY - 1) * c + 
+    (cellX)], sparse_distm[(cellY) * c + 
+    (cellX - 1)], sparse_distm[(cellY - 1) * c + (cellX - 1)]);
+
+    // Calculate new value in distance matrix
+    calcDistMat(sparse_mat, cellX, cellY, seq1, seq2, maxPrevValue, gap, match, mismatch);
+
+    // !!! UNUSED !!!
+    // Calculate direction matrix
+    // 000, 1st digit = left, 2nd digit = diag, 3rd digit = top
+    // calcDirectionMatrix(sparse_distm, direction_mat, cellX, cellY, maxPrevValue);
+    
 
 }
 
@@ -156,8 +264,8 @@ int main2(int argc, char*argv[]) {
 
     // Convert strings to numerical form
     // A = 1, T = 2, C = 3, G = 4, gap = 0
-    string seq1;
-    string seq2;   
+    vector<int> seq1;
+    vector<int> seq2;   
     seq1 = convSeq(seq1a);
     seq2 = convSeq(seq2a);
 
@@ -198,14 +306,41 @@ int main2(int argc, char*argv[]) {
     cout << "columns: " << seq2l << "\n";
 
     // start next xy at 0,0
+    // Allocate memory for 
 
     // for loop until
     // set current xy = next xy
     // calculate next xy
+
+
+    // Get the lengths of the past 2 diagonals
+    // Create sparse matrix that only copies these 2 prior diagonals
+    // Allocate memory for a sparse array
+    // Allocate memory for the sparse direction array
     // run kernel
+    // Copy sparse matrix back to host and add computed cells to the main array
 
 
 
+
+
+    // In the traceback, for each cell on a path
+    // Reverse its score calculation via comparing seq1[xy] <> seq2[xy]
+    // Get the prior 3 cells
+    // Check with cells are a match,
+        // If there is just one match, continue
+        // If there is more than one match, 
+            // recursively spawn 1 more thread for the topmost direction (can be top or diag) 
+            // with current thread's path memory + (cell xy pointed to by direction)
+            // append the cell xy of the leftmost direction (can be left or diag) to current thread's path
+        // If all match
+            // recursively spawn 2 more threads for the topmost directions with current thread's path memory
+            // with current thread's path memory + (cell xy pointed to by direction)
+            // append the cell xy of the leftmost direction to current thread's path
+    // Synchronize threads so they wait before finishing
+    // Then when they are all finished, pool their paths into an array of array of vectors
+
+    // Convert to alignments and write to file
 
 
     for (int i = 0; i < seq1l; i++){
