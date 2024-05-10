@@ -31,27 +31,32 @@ vector<int> convSeq(string seq){
     for (char ch : seq) {
         switch (base) {
             case 'A':
-                result.push_back(base - '0');
+                result.push_back(0);
                 break;
             case 'T':
-                result.push_back(base - '1');
+                result.push_back(1);
                 break;
             case 'C':
-                result.push_back(base - '2');
+                result.push_back(2);
                 break;
             case 'G':
-                result.push_back(base - '3');
+                result.push_back(3);
                 break;
             case '-':
-                result.push_back(base - '4');
+                result.push_back(4);
                 break;
             default:
-                result.push_back(base - '0');
+                result.push_back(0);
                 break;
         }
     }
 
     return result;
+}
+
+// Diagonal clipping/overshoot function
+std:vector<int> getClippedXY(std::vector<int> start, int r, int c, int n, bool allowOvershootPastStart){
+    
 }
 
 // Find next start xy for diagonal filling
@@ -210,15 +215,15 @@ int r, int c, vector<int> curr, vector<int>* seq1, vector<int>* seq2, int match,
     // Handle first row and first column
     if ((cellX == 0) && (cellY == 0)){
         sparse_distm[(cellY) * c + (cellX)] = 0;
-        direction_mat[(cellY) * c + (cellX)] = 0;
+        //direction_mat[(cellY) * c + (cellX)] = 0;
         return;
     } else if (cellX == 0){
         sparse_distm[(cellY) * c + (cellX)] = gap;
-        direction_mat[(cellY) * c + (cellX)] = 0;
+        //direction_mat[(cellY) * c + (cellX)] = 0;
         return;
     } else if (cellY == 0){
         sparse_distm[(cellY) * c + (cellX)] = gap;
-        direction_mat[(cellY) * c + (cellX)] = 0;
+        //direction_mat[(cellY) * c + (cellX)] = 0;
         return;
     }
 
